@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RegBridge · Agentic Compliance for SEBI Intermediaries</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="app-shell">
+
+  <!-- ===== Sidebar ===== -->
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="brand-mark">RB</span>
+      <div class="brand-text">
+        <span class="brand-name">RegBridge</span>
+        <span class="brand-sub">Agentic Compliance</span>
+      </div>
+    </div>
+
+    <nav class="nav" id="mainNav">
+      <button class="nav-item active" data-view="ingest">
+        <span class="nav-num">01</span> Ingest Circular
+      </button>
+      <button class="nav-item" data-view="dashboard">
+        <span class="nav-num">02</span> Compliance Dashboard
+      </button>
+      <button class="nav-item" data-view="diff">
+        <span class="nav-num">03</span> Circular Diff
+      </button>
+      <button class="nav-item" data-view="audit">
+        <span class="nav-num">04</span> Audit Trail
+      </button>
+    </nav>
+
+    <div class="sidebar-foot">
+      <div class="status-pill" id="apiStatusPill">
+        <span class="dot" id="apiStatusDot"></span>
+        <span id="apiStatusText">Checking backend…</span>
+      </div>
+      <p class="foot-note">No mock data. Every obligation on screen came from a circular you uploaded and an AI extraction call you triggered.</p>
+    </div>
+  </aside>
+
+  <!-- ===== Main ===== -->
+  <main class="main">
+
+    <!-- ---------- VIEW: Ingest ---------- -->
+    <section class="view active" id="view-ingest">
+      <header class="view-head">
+        <h1>Ingest a SEBI circular</h1>
+        <p>Upload the real circular PDF. Text is extracted in your browser, then sent to the RegBridge backend (Mistral AI) to extract structured obligations — nothing here is pre-written.</p>
+      </header>
+
+      <div class="grid-2">
+        <div class="card">
+          <h3>1 · Circular file</h3>
+          <label class="dropzone" id="dropzone" for="pdfInput">
+            <input type="file" id="pdfInput" accept="application/pdf" hidden>
+            <span class="dz-icon">⇧</span>
+            <span class="dz-text">Drop a SEBI circular PDF here, or click to browse</span>
+            <span class="dz-file" id="dzFileName"></span>
+          </label>
+
+          <div class="field-row">
+            <label for="circularTitle">Circular title</label>
+            <input type="text" id="circularTitle" placeholder="e.g. Master Circular for Investment Advisers">
+          </div>
+
+          <div class="field-row">
+            <label for="circularRef">Circular reference no. (optional)</label>
+            <input type="text" id="circularRef" placeholder="e.g. SEBI/HO/MIRSD/...">
+          </div>
+
+          <div class="field-row">
+            <label for="intermediaryType">Intermediary type</label>
+            <select id="intermediaryType">
+              <option value="Stockbroker">Stockbroker</option>
+              <option value="AMC">Asset Management Company (AMC)</option>
+              <option value="Investment Adviser" selected>Investment Adviser</option>
+              <option value="Depository">Depository</option>
+              <option value="RTA">RTA</option>
+              <option value="MII">Market Infrastructure Institution (MII)</option>
+            </select>
+          </div>
+
+          <button class="btn btn-primary" id="extractTextBtn" disabled>Extract text from PDF</button>
+          <p class="hint" id="extractTextHint"></p>
+        </div>
+
+        <div class="card">
+          <h3>2 · Extracted text preview</h3>
+          <textarea id="rawTextPreview" class="raw-preview" placeholder="Extracted circular text will appear here once you extract the PDF. This is the exact text the AI model will read — nothing is hidden from you." readonly></textarea>
+          <div class="char-count" id="charCount"></div>
+
+          <button class="btn btn-accent" id="runAiBtn" disabled>Run AI obligation extraction</button>
+          <div class="ai-log" id="aiLog"></div>
+        </div>
+      </div>
+
+      <div class="card" id="extractionResultCard" hidden>
+        <h3>3 · Extracted obligations</h3>
+        <p class="muted">This is the raw structured JSON returned by the model for this circular. Review it, then save it into the compliance dashboard.</p>
+        <pre class="json-preview" id="jsonPreview"></pre>
+        <button class="btn btn-primary" id="saveCircularBtn">Save to compliance dashboard →</button>
+      </div>
+    </section>
+
+    <!-- ---------- VIEW: Dashboard ---------- -->
+    <section class="view" id="view-dashboard">
+      <header class="view-head">
+        <h1>Compliance dashboard</h1>
+        <p>Live status of every obligation extracted from your ingested circulars.</p>
+      </header>
+
+      <div class="dash-toolbar">
+        <select id="circularFilter"><option value="">All circulars</option></select>
+        <select id="statusFilter">
+          <option value="">All statuses</option>
+          <option value="Done">Done</option>
+          <option value="Gap">Gap</option>
+          <option value="Missing">Missing</option>
+        </select>
+        <select id="categoryFilter"><option value="">All categories</option></select>
+        <input type="text" id="searchFilter" placeholder="Search obligations…">
+      </div>
+
+      <div class="stat-row" id="statRow"></div>
+
+      <div class="obligation-list" id="obligationList">
+        <p class="empty-state">No obligations yet. Go to <strong>Ingest Circular</strong> and extract your first one.</p>
+      </div>
+    </section>
+
+    <!-- ---------- VIEW: Diff ---------- -->
+    <section class="view" id="view-diff">
+      <header class="view-head">
+        <h1>Circular diff engine</h1>
+        <p>Upload an amended version of a circular already in your dashboard. RegBridge re-extracts it and compares obligation-by-obligation against the version on file.</p>
+      </header>
+
+      <div class="grid-2">
+        <div class="card">
+          <h3>Base circular (on file)</h3>
+          <select id="diffBaseCircular"><option value="">Select a saved circular…</option></select>
+          <div id="diffBaseSummary" class="diff-summary"></div>
+        </div>
+
+        <div class="card">
+          <h3>Amended circular (new upload)</h3>
+          <label class="dropzone" id="diffDropzone" for="diffPdfInput">
+            <input type="file" id="diffPdfInput" accept="application/pdf" hidden>
+            <span class="dz-icon">⇧</span>
+            <span class="dz-text">Drop the amended circular PDF</span>
+            <span class="dz-file" id="diffDzFileName"></span>
+          </label>
+          <button class="btn btn-primary" id="diffExtractBtn" disabled>Extract &amp; compare</button>
+          <div class="ai-log" id="diffAiLog"></div>
+        </div>
+      </div>
+
+      <div class="card" id="diffResultCard" hidden>
+        <h3>What changed</h3>
+        <div class="diff-columns" id="diffColumns"></div>
+      </div>
+    </section>
+
+    <!-- ---------- VIEW: Audit ---------- -->
+    <section class="view" id="view-audit">
+      <header class="view-head">
+        <h1>Audit trail</h1>
+        <p>Every status change, evidence upload and extraction event, timestamped and persisted in Supabase.</p>
+      </header>
+
+      <div class="dash-toolbar">
+        <button class="btn btn-secondary" id="exportAuditBtn">Export as CSV</button>
+      </div>
+
+      <div class="audit-table-wrap">
+        <table class="audit-table">
+          <thead>
+            <tr><th>Timestamp</th><th>Event</th><th>Obligation / Circular</th><th>Detail</th></tr>
+          </thead>
+          <tbody id="auditBody">
+            <tr><td colspan="4" class="empty-state">No events logged yet.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- Evidence modal -->
+<div class="modal-overlay" id="evidenceModal" hidden>
+  <div class="modal">
+    <h3>Attach evidence</h3>
+    <p class="muted" id="evidenceObligationText"></p>
+    <textarea id="evidenceNote" placeholder="Describe the evidence (e.g. file name, policy doc reference, internal ticket #)…"></textarea>
+    <input type="file" id="evidenceFile">
+    <div class="btn-row">
+      <button class="btn btn-primary" id="saveEvidenceBtn">Save evidence</button>
+      <button class="btn btn-secondary" id="cancelEvidenceBtn">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/vendor/pdf.min.js?v=20260712-1"></script>
+<script src="js/storage.js?v=20260712-1"></script>
+<script src="js/pdfExtract.js?v=20260712-1"></script>
+<script src="js/aiExtract.js?v=20260712-1"></script>
+<script src="js/diff.js?v=20260712-1"></script>
+<script src="js/dashboard.js?v=20260712-1"></script>
+<script src="js/audit.js?v=20260712-1"></script>
+<script src="js/app.js?v=20260712-1"></script>
+</body>
+</html>
