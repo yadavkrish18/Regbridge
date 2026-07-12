@@ -92,7 +92,9 @@ Open a second terminal at the project root and run:
 python -m http.server 5500
 ```
 
-Then open http://localhost:5500.
+Then open http://localhost:5500/ or http://127.0.0.1:5500/.
+
+If the browser does not open the app on localhost on Windows, try the 127.0.0.1 address instead. This can happen when localhost resolves differently in the local environment.
 
 ---
 
